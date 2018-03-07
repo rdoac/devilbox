@@ -1,0 +1,147 @@
+LoadModule proxy_ajp_module modules/mod_proxy_ajp.so
+<VirtualHost *:80>
+    ServerName   exampledomain.local
+
+    CustomLog  "/var/log/apache-2.4/exampledomain-access.log" combined
+    ErrorLog   "/var/log/apache-2.4/exampledomain-error.log"
+
+    # Define the vhost to serve files
+    DocumentRoot "/shared/httpd/exampledomain/."
+    <Directory "/shared/httpd/exampledomain/.">
+        DirectoryIndex index.cfm
+
+        AllowOverride All
+        Options All
+
+        RewriteEngine on
+        RewriteBase /
+
+        Order allow,deny
+        Allow from all
+        Require all granted
+    </Directory>
+
+    <IfModule proxy_ajp_module>
+        RewriteEngine on
+        ProxyPreserveHost On
+
+        # base redirects
+        RewriteRule "^/giftcard" "/login/new/" [R]
+
+        # pass profile minime as url param and not additional path
+        RewriteCond %{REQUEST_URI} !(.*)/$
+        RewriteCond %{REQUEST_URI} !(.*)/([0-9]+)$
+        RewriteCond %{REQUEST_URI} ^/profile/(.*)
+        RewriteCond %{DOCUMENT_ROOT}/templates/profile/tabs/$2\.cfm !-f
+        RewriteRule ^/(profile)/(.+)$ ajp://lucee:8009/exampledomain/index.cfm?q=$1&user=$2 [L,QSA,P]
+
+        ## outings and events
+
+        # pass outing with region, radius, and anything else
+        RewriteCond %{DOCUMENT_ROOT}%{REQUEST_FILENAME} !-f
+        RewriteRule ^/(outings|events)/([0-9\/]+.*)$ ajp://lucee:8009/exampledomain/index.cfm?q=$1&r=$2 [L,QSA,P]
+
+        # account for watching and search
+        RewriteCond %{DOCUMENT_ROOT}%{REQUEST_FILENAME} !-f
+        RewriteRule ^/(outings|events)/(watching|search)(.*)$ ajp://lucee:8009/exampledomain/index.cfm?q=$1&r=$2&c=$3 [L,QSA,P]
+
+        # pass outing with minime
+        RewriteCond %{DOCUMENT_ROOT}%{REQUEST_FILENAME} !-f
+        RewriteRule ^/(outings|events)/(.+)/(.*)$ ajp://lucee:8009/exampledomain/index.cfm?q=$1/$2/&id=$3 [L,QSA,P]
+
+        ## end outings and events
+
+                        ## websocket chat
+
+                        RewriteCond %{DOCUMENT_ROOT}%{REQUEST_FILENAME} !-f
+                        RewriteRule ^/(chat)/(.+)$ ajp://lucee:8009/exampledomain/index.cfm?q=$1/&path=$2 [L,QSA,P]
+
+                        ## end websocket chat
+
+        ## framework
+
+        # serve /op, not .cfm or .cfc, where file exists via apache
+        RewriteCond %{REQUEST_URI} ^/op/(.*)
+        RewriteCond %{REQUEST_URI} !^(.+\.cf[cm])(.*)
+        RewriteCond %{DOCUMENT_ROOT}/fw%{REQUEST_FILENAME} -f
+        RewriteRule (.*) /fw$1 [L,QSA]
+
+        # serve /op, .cfm or .cfc, where file exists via tomcat
+        RewriteCond %{REQUEST_URI} ^/op/(.*)
+        RewriteCond %{REQUEST_URI} ^(.+\.cf[cm])(.*)
+        RewriteCond %{DOCUMENT_ROOT}/fw%{REQUEST_FILENAME} -f
+        RewriteRule (.*) ajp://lucee:8009/exampledomain/fw$1 [L,P,QSA]
+
+        # serve /op requests for specific pages such as add, edit, etc
+        RewriteCond %{REQUEST_URI} ^/op/!(.+)/(.*)
+        RewriteRule ^/op/!(.+)/(.*) ajp://lucee:8009/exampledomain/fw/op/?action=$1&id=$2 [L,P,QSA]
+
+        # serve /op requests with extended URL, prepend fw to path
+        RewriteRule ^/op/(.+)$ ajp://lucee:8009/exampledomain/fw/op/?q=$1 [L,P,QSA]
+
+        # serve base /op/ URL
+        RewriteRule ^/op/(.*)$ ajp://lucee:8009/exampledomain/fw/op/$1 [L,P,QSA]
+
+        ## end framework
+
+        # pass all other CFM-type requests
+        ProxyPassMatch ^/(.+\.cf[cm])(/.*)?$ ajp://lucee:8009/exampledomain/$1$2
+        ProxyPassMatch ^/(.+\.cfchart)(/.*)?$ ajp://lucee:8009/exampledomain/$1$2
+        ProxyPassMatch ^/(.+\.cfml)(/.*)?$ ajp://lucee:8009/exampledomain/$1$2
+        ProxyPassReverse / ajp://lucee:8009/exampledomain/
+    </IfModule>
+
+
+    # PHP-FPM Definition
+    <FilesMatch \.php$>
+        Require all granted
+        SetHandler proxy:fcgi://php:9000
+    </FilesMatch>
+
+    # enablereuse requires Apache 2.4.11 or later
+    <Proxy "fcgi://php:9000/" enablereuse=on max=10>
+    </Proxy>
+
+    # If the php file doesn't exist, disable the proxy handler.
+    # This will allow .htaccess rewrite rules to work and
+    # the client will see the default 404 page of Apache
+    RewriteCond %{REQUEST_FILENAME} \.php$
+    RewriteCond %{DOCUMENT_ROOT}/%{REQUEST_URI} !-f
+    RewriteRule (.*) - [H=text/html]
+
+    # Alias Definition
+    Alias "/devilbox-api/" "/var/www/default/api/devilbox-api/"
+    <Location "/devilbox-api/">
+        # Allow cross domain request from these hosts
+        SetEnvIf Origin "http(s)?://(.*)$" AccessControlAllowOrigin=$0$1
+        Header add Access-Control-Allow-Origin %{AccessControlAllowOrigin}e env=AccessControlAllowOrigin
+        Header always set Access-Control-Allow-Methods "POST, GET, OPTIONS, DELETE, PUT"
+        Header always set Access-Control-Max-Age "0"
+        Header always set Access-Control-Allow-Headers "x-requested-with, Content-Type, origin, authorization, accept, client-security-token"
+        # Added a rewrite to respond with a 200 SUCCESS on every OPTIONS request.
+        RewriteEngine On
+        RewriteCond %{REQUEST_METHOD} OPTIONS
+        RewriteRule ^(.*)$ $1 [R=200,L]
+    </Location>
+    <Directory "/var/www/default/api/devilbox-api/">
+        Order allow,deny
+        Allow from all
+        Require all granted
+    </Directory>
+
+    # Deny Definition
+    <FilesMatch "/\.git">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+
+    # Deny Definition
+    <FilesMatch "/\.ht.*">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+
+
+    # Custom directives
+
+</VirtualHost>

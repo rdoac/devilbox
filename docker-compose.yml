@@ -48,7 +48,7 @@ services:
       ## Bind settings
       ##
       - WILDCARD_DOMAIN=${TLD_SUFFIX:-loc}
-      - WILDCARD_ADDRESS=172.16.238.11
+      - WILDCARD_ADDRESS=127.0.0.1
       - DNS_FORWARDER=${BIND_DNS_RESOLVER:-8.8.8.8,8.8.4.4}
 
     dns:
@@ -63,7 +63,7 @@ services:
   # PHP / HHVM
   # ------------------------------------------------------------
   php:
-    image: cytopia/${PHP_SERVER:-php-fpm-7.0}:latest
+    image: rdoac/${PHP_SERVER:-php-fpm-7.0}
     restart: always
 
     ##
@@ -107,7 +107,7 @@ services:
       ##
       ## Enable 127.0.0.1 Port-forwarding
       ##
-      - FORWARD_PORTS_TO_LOCALHOST=3306:mysql:3306,5432:pgsql:5432,6379:redis:6379,11211:memcd:11211,27017:mongo:27017
+      - FORWARD_PORTS_TO_LOCALHOST=80:httpd:80,3306:mysql:3306,5432:pgsql:5432,6379:redis:6379,11211:memcd:11211,27017:mongo:27017,8009:lucee:8009:rabbit:5672,15672:rabbit:15672,53:bind:53
 
       ##
       ## MySQL Backups
@@ -235,6 +235,60 @@ services:
     depends_on:
       - bind
       - php
+
+  # ------------------------------------------------------------
+  # lucee Server
+  # ------------------------------------------------------------
+  lucee:
+    image: rdoac/${LUCEE_SERVER:-docker-latest-lucee}
+    restart: always
+
+    environment:
+
+      ##
+      ## Debug?
+      ##
+      - DEBUG_ENTRYPOINT=${DEBUG_COMPOSE_ENTRYPOINT}
+      - DEBUG_RUNTIME=${DEBUG_COMPOSE_ENTRYPOINT}
+
+      ##
+      ## Enable 127.0.0.1 Port-forwarding
+      ##
+      - FORWARD_PORTS_TO_LOCALHOST=80:httpd:80,3306:mysql:3306,25:mailhog:1025
+
+
+      ##
+      ## Adjust timezone
+      ##
+      - TIMEZONE
+
+      ##
+      ## UserID and GroupID
+      ##
+      - NEW_UID
+      - NEW_GID
+
+    ports:
+      # ---- Format: ----
+      # [HOST-ADDR : ] HOST-PORT : DOCKER-PORT
+      - "${LOCAL_LISTEN_ADDR}${HOST_PORT_LUCEE}:8009"
+
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.21
+
+    volumes:
+      # ---- Format: ----
+      # HOST-DIRECTORY : DOCKER-DIRECTORY
+
+      # Mount custom mass virtual hosting
+      - ${HOST_PATH_HTTPD_DATADIR}:/shared/httpd
+      - ${HOST_PATH_HTTPD_DATADIR}:/usr/local/tomcat/webapps
+
+    depends_on:
+      - bind
+      - php
+      - httpd
 
 
   # ------------------------------------------------------------
@@ -392,30 +446,25 @@ services:
 
 
   # ------------------------------------------------------------
-  # MongoDB
+  # MailHog
   # ------------------------------------------------------------
-  mongo:
-    image: mongo:${MONGO_SERVER:-latest}
+  mailhog:
+    image: mailhog/mailhog
 
     ports:
       # [local-machine:]local-port:docker-port
-      - "${LOCAL_LISTEN_ADDR}${HOST_PORT_MONGO}:27017"
+      - "${LOCAL_LISTEN_ADDR}${HOST_PORT_MAILHOG}:1025"
+      - "${LOCAL_LISTEN_ADDR}${HOST_PORT_MAILHOG_WWW}:8025"
 
     networks:
       app_net:
-        ipv4_address: 172.16.238.16
-
-    volumes:
-      # ---- Format: ----
-      # HOST-DIRECTORY : DOCKER-DIRECTORY
-
-      # Mount MongoDB Data directory
-      - ${HOST_PATH_MONGO_DATADIR}/${MONGO_SERVER}:/data/db
+        ipv4_address: 172.16.238.22
 
     depends_on:
       - bind
       - php
       - httpd
+
 
 
 ################################################################################

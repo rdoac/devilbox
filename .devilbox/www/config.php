@@ -45,6 +45,8 @@ $PGSQL_HOST_NAME	= 'pgsql';
 $REDIS_HOST_NAME	= 'redis';
 $MEMCD_HOST_NAME	= 'memcd';
 $MONGO_HOST_NAME	= 'mongo';
+$LUCEE_HOST_NAME	= 'lucee';
+$MAILHOG_HOST_NAME	= 'mailhog';
 
 
 //
@@ -139,6 +141,16 @@ function loadClass($class) {
 			case 'Mongo':
 				loadFile($class, $cnt_dir);
 				$_LOADED_LIBS[$class] = \devilbox\Mongo::getInstance($GLOBALS['MONGO_HOST_NAME']);
+				break;
+
+			case 'Lucee':
+				loadFile($class, $cnt_dir);
+				$_LOADED_LIBS[$class] = \devilbox\Lucee::getInstance($GLOBALS['LUCEE_HOST_NAME']);
+				break;
+
+			case 'MailHog':
+				loadFile($class, $cnt_dir);
+				$_LOADED_LIBS[$class] = \devilbox\MailHog::getInstance($GLOBALS['MAILHOG_HOST_NAME']);
 				break;
 
 			// Get optional docker classes

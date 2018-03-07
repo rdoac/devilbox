@@ -15,11 +15,13 @@
 $avail_php		= loadClass('Php')->isAvailable();
 $avail_dns		= loadClass('Dns')->isAvailable();
 $avail_httpd	= loadClass('Httpd')->isAvailable();
+$avail_lucee	= loadClass('Lucee')->isAvailable();
 $avail_mysql	= loadClass('Mysql')->isAvailable();
 $avail_pgsql	= loadClass('Pgsql')->isAvailable();
 $avail_redis	= loadClass('Redis')->isAvailable();
 $avail_memcd	= loadClass('Memcd')->isAvailable();
 $avail_mongo	= loadClass('Mongo')->isAvailable();
+$avail_mailhog	= loadClass('MailHog')->isAvailable();
 
 
 /*************************************************************
@@ -177,8 +179,53 @@ if ($avail_mongo) {
 		'succ' => $succ
 	);
 }
+// ---- LUCEE -----
 
-
+$host	= $GLOBALS['LUCEE_HOST_NAME'];
+$succ	= loadClass('Lucee')->canConnect($error, $host);
+$connection['Lucee'][$host] = array(
+	'error' => $error,
+	'host' => $host,
+	'succ' => $succ
+);
+$host	= loadClass('Lucee')->getIpAddress();
+$succ	= loadClass('Lucee')->canConnect($error, $host);
+$connection['Lucee'][$host] = array(
+	'error' => $error,
+	'host' => $host,
+	'succ' => $succ
+);
+$host	= '127.0.0.1';
+$succ	= loadClass('Lucee')->canConnect($error, $host);
+$connection['Lucee'][$host] = array(
+	'error' => $error,
+	'host' => $host,
+	'succ' => $succ
+);
+// ---- MAILHOG ----
+if ($avail_mailhog) {
+	$host	= $GLOBALS['MAILHOG_HOST_NAME'];
+	$succ	= loadClass('MailHog')->canConnect($error, $host);
+	$connection['MailHog'][$host] = array(
+		'error' => $error,
+		'host' => $host,
+		'succ' => $succ
+	);
+	$host	= loadClass('MailHog')->getIpAddress();
+	$succ	= loadClass('MailHog')->canConnect($error, $host);
+	$connection['MailHog'][$host] = array(
+		'error' => $error,
+		'host' => $host,
+		'succ' => $succ
+	);
+	$host	= '127.0.0.1';
+	$succ	= loadClass('MailHog')->canConnect($error, $host);
+	$connection['MailHog'][$host] = array(
+		'error' => $error,
+		'host' => $host,
+		'succ' => $succ
+	);
+}
 // ---- BIND (required)----
 $host	= $GLOBALS['DNS_HOST_NAME'];
 $succ	= loadClass('Dns')->canConnect($error, $host);
@@ -284,6 +331,7 @@ $HEALTH_PERCENT = 100 - ceil(100 * $HEALTH_FAILS / $HEALTH_TOTAL);
 								<div class="col-xl-4 col-lg-6 col-md-6 col-sm-12 col-xs-4" style="margin-bottom:15px;">
 									<?php echo loadClass('Html')->getCirle('httpd'); ?>
 								</div>
+
 							</div>
 						</div>
 					</div>
@@ -319,6 +367,12 @@ $HEALTH_PERCENT = 100 - ceil(100 * $HEALTH_FAILS / $HEALTH_TOTAL);
 								<div class="col-xl-4 col-lg-6 col-md-6 col-sm-12 col-xs-4" style="margin-bottom:15px;">
 									<?php echo loadClass('Html')->getCirle('mongo'); ?>
 								</div>
+								<div class="col-xl-4 col-lg-6 col-md-6 col-sm-12 col-xs-4" style="margin-bottom:15px;">
+									<?php echo loadClass('Html')->getCirle('lucee'); ?>
+								</div>
+								<div class="col-xl-4 col-lg-6 col-md-6 col-sm-12 col-xs-4" style="margin-bottom:15px;">
+									<?php echo loadClass('Html')->getCirle('mailhog'); ?>
+								</div>								
 							</div>
 						</div>
 					</div>
@@ -580,6 +634,20 @@ $HEALTH_PERCENT = 100 - ceil(100 * $HEALTH_FAILS / $HEALTH_TOTAL);
 													<td><?php echo loadClass('Mongo')->getIpAddress(); ?></td>
 												</tr>
 											<?php endif; ?>
+											<?php if ($avail_lucee): ?>
+												<tr>
+													<th>lucee</th>
+													<td><?php echo $GLOBALS['LUCEE_HOST_NAME']; ?></td>
+													<td><?php echo loadClass('Lucee')->getIpAddress(); ?></td>
+												</tr>
+											<?php endif; ?>
+											<?php if ($avail_mailhog): ?>
+												<tr>
+													<th>mailhog</th>
+													<td><?php echo $GLOBALS['MAILHOG_HOST_NAME']; ?></td>
+													<td><?php echo loadClass('MailHog')->getIpAddress(); ?></td>
+												</tr>
+											<?php endif; ?>											
 											<?php if ($avail_dns): ?>
 												<tr>
 													<th>bind</th>
@@ -656,13 +724,30 @@ $HEALTH_PERCENT = 100 - ceil(100 * $HEALTH_FAILS / $HEALTH_TOTAL);
 													<td>27017</td>
 												</tr>
 											<?php endif; ?>
+											<?php if ($avail_lucee): ?>
+												<tr>
+													<th>lucee</th>
+													<td><?php echo loadClass('Helper')->getEnv('LOCAL_LISTEN_ADDR').loadClass('Helper')->getEnv('HOST_PORT_LUCEE');?></td>
+													<td>8009</td>
+												</tr>
+											<?php endif; ?>
+											<?php if ($avail_mailhog): ?>
+												<tr>
+													<th>mailhog</th>
+													<td>
+														<?php echo loadClass('Helper')->getEnv('LOCAL_LISTEN_ADDR').loadClass('Helper')->getEnv('HOST_PORT_MAILHOG');?><br>
+														<?php echo loadClass('Helper')->getEnv('LOCAL_LISTEN_ADDR').loadClass('Helper')->getEnv('HOST_PORT_MAILHOG_WWW');?>
+													</td>
+													<td>25<br>8025</td>
+												</tr>
+											<?php endif; ?>																						
 											<?php if ($avail_dns): ?>
 												<tr>
 													<th>bind</th>
 													<td>
 														<?php echo loadClass('Helper')->getEnv('LOCAL_LISTEN_ADDR').loadClass('Helper')->getEnv('HOST_PORT_BIND');?>/tcp<br/>
 														<?php echo loadClass('Helper')->getEnv('LOCAL_LISTEN_ADDR').loadClass('Helper')->getEnv('HOST_PORT_BIND');?>/udp
-														</td>
+													</td>
 													<td>53/tcp<br/>53/udp</td>
 												</tr>
 											<?php endif; ?>
@@ -699,6 +784,13 @@ $HEALTH_PERCENT = 100 - ceil(100 * $HEALTH_FAILS / $HEALTH_TOTAL);
 													<td><?php echo loadClass('Helper')->getEnv('HOST_PATH_HTTPD_DATADIR'); ?></td>
 												<td>/shared/httpd</td>
 											</tr>
+											<?php if ($avail_lucee): ?>
+												<tr>
+													<th>lucee</th>
+													<td><?php echo loadClass('Helper')->getEnv('HOST_PATH_HTTPD_DATADIR'); ?></td>
+													<td>/usr/local/tomcat/webapps</td>
+												</tr>
+											<?php endif; ?>																						
 											<?php if ($avail_mysql): ?>
 												<tr>
 													<th>mysql</th>
@@ -734,6 +826,13 @@ $HEALTH_PERCENT = 100 - ceil(100 * $HEALTH_FAILS / $HEALTH_TOTAL);
 													<td>/data/db</td>
 												</tr>
 											<?php endif; ?>
+											<?php if ($avail_mailhog): ?>
+												<tr>
+													<th>mailhog</th>
+													<td>-</td>
+													<td>-</td>
+												</tr>
+											<?php endif; ?>											
 											<?php if ($avail_dns): ?>
 												<tr>
 													<th>bind</th>
@@ -809,6 +908,20 @@ $HEALTH_PERCENT = 100 - ceil(100 * $HEALTH_FAILS / $HEALTH_TOTAL);
 													<td>-</td>
 												</tr>
 											<?php endif; ?>
+											<?php if ($avail_lucee): ?>
+												<tr>
+													<th>lucee</th>
+													<td>-</td>
+													<td>-</td>
+												</tr>
+											<?php endif; ?>												
+											<?php if ($avail_mailhog): ?>
+												<tr>
+													<th>mailhog</th>
+													<td>-</td>
+													<td>-</td>
+												</tr>
+											<?php endif; ?>												
 											<?php if ($avail_dns): ?>
 												<tr>
 													<th>bind</th>
@@ -884,6 +997,20 @@ $HEALTH_PERCENT = 100 - ceil(100 * $HEALTH_FAILS / $HEALTH_TOTAL);
 													<td>-</td>
 												</tr>
 											<?php endif; ?>
+											<?php if ($avail_lucee): ?>
+												<tr>
+													<th>lucee</th>
+													<td>-</td>
+													<td>-</td>
+												</tr>
+											<?php endif; ?>												
+											<?php if ($avail_mailhog): ?>
+												<tr>
+													<th>mailhog</th>
+													<td>-</td>
+													<td>-</td>
+												</tr>
+											<?php endif; ?>												
 											<?php if ($avail_dns): ?>
 												<tr>
 													<th>bind</th>

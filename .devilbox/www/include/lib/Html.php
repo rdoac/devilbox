@@ -20,7 +20,7 @@ class Html
 			),
 			array(
 				'name' => 'Emails',
-				'path' => '/mail.php'
+				'path' => 'http://localhost:8025'
 			)
 		),
 		array(
@@ -60,6 +60,10 @@ class Html
 					'path' => '/info_php.php'
 				),
 				array(
+					'name' => 'Lucee Info',
+					'path' => '/info_lucee.php'
+				),
+				array(
 					'name' => 'MySQL Info',
 					'path' => '/info_mysql.php'
 				),
@@ -78,7 +82,11 @@ class Html
 				array(
 					'name' => 'Memcached Info',
 					'path' => '/info_memcd.php'
-				)
+				),
+				array(
+					'name' => 'MailHog Info',
+					'path' => '/info_mailhog.php'
+				)				
 			)
 		),
 		array(
@@ -295,6 +303,18 @@ HTML;
 				$available = loadClass('Mongo')->isAvailable();
 				$name = loadClass('Mongo')->getName();
 				break;
+			case 'mailhog':
+				$class = 'bg-danger';
+				$version = loadClass('MailHog')->getVersion();
+				$available = loadClass('MailHog')->isAvailable();
+				$name = loadClass('MailHog')->getName();
+				break;
+			case 'lucee':
+				$class = 'bg-danger';
+				$version = loadClass('Lucee')->getVersion();
+				$available = loadClass('Lucee')->isAvailable();
+				$name = loadClass('Lucee')->getName();
+				break;								
 			default:
 				$available = false;
 				$version = '';
